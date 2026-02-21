@@ -43,5 +43,4 @@ GrindReceiptz/
 ├── css/
 │   └── style.css       # Glassmorphism, receipt styling & theme logic
 ├── js/
-│   └── timer.js        # Personality data, Audio/Particle engines & state
-└── assets/             # (Optional) Logos or icons
+   └── timer.js        # Personality data, Audio/Particle engines & state
