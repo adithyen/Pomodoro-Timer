@@ -741,7 +741,11 @@ header {
 }
 .receipt-close:hover { background: #1a1715; color: #faf7f0; }
 
-/* ===== CONFETTI ===== */
+.btn-receipt {
+  font-size: 18px;
+  opacity: 0.7;
+}
+.btn-receipt:hover { opacity: 1; transform: rotate(-5deg) scale(1.1); }
 .confetti-bit {
   position: fixed;
   pointer-events: none;

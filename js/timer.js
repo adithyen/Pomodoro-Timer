@@ -719,7 +719,13 @@ document.getElementById('receipt-close').addEventListener('click', () => {
   document.getElementById('receipt-overlay').classList.remove('open');
 });
 
-// Keyboard shortcuts
+// Receipt button — generate anytime
+document.getElementById('btn-receipt').addEventListener('click', () => {
+  if (soundEnabled) playClick();
+  showReceipt();
+});
+
+// Keyboard shortcut P
 document.addEventListener('keydown', e => {
   // Ignore if modifier held
   if (e.ctrlKey || e.metaKey) return;
@@ -732,6 +738,7 @@ document.addEventListener('keydown', e => {
   if (e.code === 'KeyR') { e.preventDefault(); reset(); }
   if (e.code === 'KeyS') { e.preventDefault(); skip(); }
   if (e.code === 'KeyT') { e.preventDefault(); applyTheme(!isDark); }
+  if (e.code === 'KeyP') { e.preventDefault(); showReceipt(); }
   if (e.code === 'Escape') {
     document.getElementById('receipt-overlay').classList.remove('open');
   }
