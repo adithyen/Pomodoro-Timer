@@ -3,35 +3,92 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ZenFocus | Pomodoro</title>
+    <title>POMO — Deep Focus Timer</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-    <div class="timer-container">
-        <div class="glass-card">
-            <div class="timer-ring">
-                <svg width="300" height="300">
-                    <circle class="outer-ring" cx="150" cy="150" r="130"></circle>
-                    <circle id="progress" cx="150" cy="150" r="130"></circle>
-                </svg>
-                <div class="timer-display">
-                    <span id="minutes">25</span>:<span id="seconds">00</span>
-                </div>
-            </div>
-            
-            <h2 id="status">Ready to Focus?</h2>
-            
-            <div class="controls">
-                <button id="start-btn" class="btn primary">Start</button>
-                <button id="reset-btn" class="btn secondary">Reset</button>
-            </div>
 
-            <div class="mode-switch">
-                <button onclick="setMode('work')" id="work-mode" class="active">Work</button>
-                <button onclick="setMode('break')" id="break-mode">Break</button>
-            </div>
+<canvas id="bg-canvas"></canvas>
+<div class="notif" id="notif"></div>
+
+<div class="app" id="app">
+    <header>
+        <div class="session-dot" id="session-dot"></div>
+        <div class="logo">POMO<span id="logo-accent">·FOCUS</span></div>
+    </header>
+
+    <div class="tabs">
+        <button class="tab active" data-mode="work">Focus</button>
+        <button class="tab" data-mode="short">Short Break</button>
+        <button class="tab" data-mode="long">Long Break</button>
+    </div>
+
+    <div class="timer-container">
+        <div class="ring-glow" id="ring-glow"></div>
+        <svg class="ring-svg" id="ring-svg" viewBox="0 0 320 320">
+            <circle class="ring-track" cx="160" cy="160" r="148"/>
+            <circle class="ring-progress" id="ring-progress" cx="160" cy="160" r="148"/>
+        </svg>
+        <div class="timer-face">
+            <div class="timer-label" id="timer-label">FOCUS SESSION</div>
+            <div class="timer-digits" id="timer-digits">25:00</div>
+            <div class="timer-session" id="timer-session">SESSION 1 OF 4</div>
+            <div class="session-dots" id="session-dots"></div>
         </div>
     </div>
-    <script src="js/timer.js"></script>
+
+    <div class="controls">
+        <button class="btn-icon" id="btn-reset" title="Reset">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.5"/>
+            </svg>
+        </button>
+        <button class="btn-main" id="btn-play">
+            <svg id="play-icon" width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>
+            <svg id="pause-icon" width="22" height="22" viewBox="0 0 24 24" fill="currentColor" style="display:none"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+        </button>
+        <button class="btn-icon" id="btn-skip" title="Skip">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polygon points="5 4 15 12 5 20"/><line x1="19" y1="5" x2="19" y2="19"/>
+            </svg>
+        </button>
+    </div>
+</div>
+
+<div class="settings-bar">
+    <div class="setting-item">
+        <span class="setting-label">FOCUS</span>
+        <div class="setting-controls">
+            <button class="sctrl" data-setting="work" data-dir="-1">−</button>
+            <span class="sval" id="sval-work">25</span>
+            <button class="sctrl" data-setting="work" data-dir="1">+</button>
+        </div>
+    </div>
+    <div class="sep"></div>
+    <div class="setting-item">
+        <span class="setting-label">SHORT</span>
+        <div class="setting-controls">
+            <button class="sctrl" data-setting="short" data-dir="-1">−</button>
+            <span class="sval" id="sval-short">5</span>
+            <button class="sctrl" data-setting="short" data-dir="1">+</button>
+        </div>
+    </div>
+    <div class="sep"></div>
+    <div class="setting-item">
+        <span class="setting-label">LONG</span>
+        <div class="setting-controls">
+            <button class="sctrl" data-setting="long" data-dir="-1">−</button>
+            <span class="sval" id="sval-long">15</span>
+            <button class="sctrl" data-setting="long" data-dir="1">+</button>
+        </div>
+    </div>
+    <div class="sep"></div>
+    <div class="setting-item">
+        <span class="sound-toggle active" id="sound-toggle" title="Toggle sound">🔔</span>
+    </div>
+</div>
+
+<script src="js/timer.js"></script>
 </body>
 </html>
