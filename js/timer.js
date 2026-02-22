@@ -261,6 +261,164 @@ function stopSilentNotifs() {
   clearInterval(notifInterval);
 }
 
+// ==================== BACKGROUND TAB INDICATOR ====================
+// Uses the Page Visibility API to show the live countdown in the browser
+// tab title and favicon badge whenever the user switches to another tab.
+// Everything is restored the moment the user comes back.
+
+const _originalTitle = document.title;
+
+// Grab or create a <link rel="icon"> so we can swap the favicon
+let _faviconEl = document.querySelector("link[rel~='icon']");
+if (!_faviconEl) {
+  _faviconEl = document.createElement('link');
+  _faviconEl.rel = 'icon';
+  document.head.appendChild(_faviconEl);
+}
+const _originalFavicon = _faviconEl.href;
+
+// Badge fill colours — one per timer mode, matching the app's accent palette
+const _BADGE_COLORS = {
+  work:  '#e05c5c',
+  short: '#5ce0b8',
+  long:  '#5c9ee0'
+};
+
+/**
+ * Renders a 32×32 circular favicon badge showing the minutes remaining.
+ * @param {string} label - Text to display inside the badge (e.g. "23")
+ * @param {string} color - CSS colour for the badge background
+ */
+function _setFaviconBadge(label, color) {
+  const canvas = document.createElement('canvas');
+  canvas.width  = 32;
+  canvas.height = 32;
+  const ctx = canvas.getContext('2d');
+
+  // Filled circle
+  ctx.beginPath();
+  ctx.arc(16, 16, 16, 0, 2 * Math.PI);
+  ctx.fillStyle = color;
+  ctx.fill();
+
+  // Minutes label
+  ctx.fillStyle    = '#ffffff';
+  ctx.font         = 'bold 13px Arial';
+  ctx.textAlign    = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(label, 16, 17);
+
+  _faviconEl.href = canvas.toDataURL('image/png');
+}
+
+/** Restores the original page title and favicon. */
+function _restoreTabIndicators() {
+  document.title  = _originalTitle;
+  _faviconEl.href = _originalFavicon;
+}
+
+/**
+ * Called on every timer tick (and on pause/complete).
+ * - Tab title: always shows the live countdown so the user can glance at
+ *   the tab from any other tab without switching back.
+ * - Favicon badge: only shown when the tab is hidden (avoids visual noise
+ *   while the user is actively on the page).
+ * - Both are restored when the timer stops or is paused.
+ */
+function updateBackgroundTabIndicator() {
+  if (!running) {
+    _restoreTabIndicators();
+    return;
+  }
+
+  const timeStr = fmt(remaining);                      // "23:45"
+  const label   = MODE_LABELS[timerMode];              // "FOCUS SESSION"
+  const minutes = String(Math.floor(remaining / 60));  // "23"
+
+  // Always update the tab title — visible from any tab in the browser
+  document.title = `\u23F1 ${timeStr} \u2013 ${label}`;
+
+  // Favicon badge only when the tab is in the background
+  if (document.hidden) {
+    _setFaviconBadge(minutes, _BADGE_COLORS[timerMode]);
+  } else {
+    _faviconEl.href = _originalFavicon; // restore favicon when tab is active
+  }
+}
+
+// Instantly restore title + favicon when the user returns to the tab
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) _restoreTabIndicators();
+});
+
+// ==================== WEB NOTIFICATIONS ====================
+// Requests permission once (on first user interaction) and fires an OS-level
+// browser notification when a session ends — so the user is alerted even if
+// GrindReceiptz is buried behind other windows or a full-screen app.
+
+/**
+ * Notification copy per mode and personality.
+ * Mirrors the personality-driven tone of the rest of the app.
+ */
+const _NOTIF_MESSAGES = {
+  work: {
+    'asian-mom':    { title: '✦ Focus Session Done',   body: 'Good. Now take exactly 5 minutes. Not 6.' },
+    'chill-friend': { title: '✦ Focus Session Done',   body: 'omg bestie you actually did it 💅 break time!' },
+    'corporate':    { title: '✦ Focus Session Done',   body: 'Deliverable complete. Break authorized. ROI pending.' },
+    'philosopher':  { title: '✦ Focus Session Done',   body: 'The void approves. Rest briefly before the next absurdity.' }
+  },
+  short: {
+    'asian-mom':    { title: '⏱ Break Over',           body: 'Break is done. Back to work. Your cousin never stopped.' },
+    'chill-friend': { title: '⏱ Break Over',           body: 'okayyyy back to it bestie, you got this 🫶' },
+    'corporate':    { title: '⏱ Break Over',           body: 'Recharge complete. Synergy window reopened.' },
+    'philosopher':  { title: '⏱ Break Over',           body: 'The pause has ended. Return to your Sisyphean task.' }
+  },
+  long: {
+    'asian-mom':    { title: '⏱ Long Break Over',      body: 'Enough rest. Back to work. Now.' },
+    'chill-friend': { title: '⏱ Long Break Over',      body: 'okay that was a vibe but focus era is back bestie 💪' },
+    'corporate':    { title: '⏱ Long Break Over',      body: 'Extended recharge cycle complete. Align on next sprint.' },
+    'philosopher':  { title: '⏱ Long Break Over',      body: 'You have rested. The universe waited. Now act.' }
+  }
+};
+
+/**
+ * Asks for notification permission on the first meaningful user interaction
+ * (play button click). We defer until then because browsers block permission
+ * prompts that aren't triggered by a user gesture.
+ */
+function requestNotifPermission() {
+  if (!('Notification' in window)) return;           // browser doesn't support it
+  if (Notification.permission === 'granted') return; // already have it
+  if (Notification.permission === 'denied') return;  // user explicitly blocked it
+  Notification.requestPermission();                  // ask once
+}
+
+/**
+ * Fires an OS-level browser notification for the completed session.
+ * Only sends if permission is granted — never forces or re-asks.
+ * @param {string} mode - The timerMode that just finished ('work'|'short'|'long')
+ */
+function sendSessionNotification(mode) {
+  if (!('Notification' in window)) return;
+  if (Notification.permission !== 'granted') return;
+
+  const msg  = _NOTIF_MESSAGES[mode][personality];
+  const notif = new Notification(msg.title, {
+    body: msg.body,
+    icon: _originalFavicon || undefined,  // use the site favicon as the notif icon
+    tag:  'grindreceiptz-session'         // replaces any previous notif instead of stacking
+  });
+
+  // Auto-close after 8 s so it doesn't linger
+  setTimeout(() => notif.close(), 8000);
+
+  // Clicking the notification focuses the GrindReceiptz tab
+  notif.addEventListener('click', () => {
+    window.focus();
+    notif.close();
+  });
+}
+
 // ==================== TIMER CORE ====================
 function start() {
   if (!sessionStats.startTime) sessionStats.startTime = new Date();
@@ -270,16 +428,19 @@ function start() {
   startTicker();
   startSilentNotifs();
 
+  requestNotifPermission(); // ask once on first play, requires user gesture
+
   interval = setInterval(() => {
     remaining--;
     updateDisplay();
+    updateBackgroundTabIndicator(); // update tab title + favicon on every tick
 
     if (remaining === Math.floor(totalSeconds / 2) && timerMode === 'work') {
       const m = PERSONALITIES[personality].mid;
       showNotif(m[Math.floor(Math.random() * m.length)]);
     }
     if (remaining === 60 && timerMode === 'work') {
-      showNotif('⏱ 1 minute left...');
+      showNotif('\u23F1 1 minute left...');
     }
     if (remaining <= 10 && remaining > 0 && soundEnabled) {
       playTick();
@@ -288,6 +449,8 @@ function start() {
     if (remaining <= 0) {
       clearInterval(interval);
       running = false;
+      _restoreTabIndicators();        // restore tab title + favicon
+      sendSessionNotification(timerMode); // OS-level browser notification
       onComplete();
     }
   }, 1000);
@@ -298,9 +461,10 @@ function pause() {
   clearInterval(interval);
   stopSilentNotifs();
   stopTicker();
+  _restoreTabIndicators(); // restore when paused
   document.getElementById('play-icon').style.display  = 'block';
   document.getElementById('pause-icon').style.display = 'none';
-  setTickerMsg('⏸ paused. still here tho.');
+  setTickerMsg('\u23F8 paused. still here tho.');
 }
 
 function reset() {
@@ -331,7 +495,7 @@ function onComplete(skipped = false) {
 
     const nextMode = (completedWork % 4 === 0 && completedWork > 0) ? 'long' : 'short';
     const donePool = PERSONALITIES[personality].done;
-    if (!skipped) showNotif('🎉 ' + donePool[Math.floor(Math.random() * donePool.length)]);
+    if (!skipped) showNotif('\uD83C\uDF89 ' + donePool[Math.floor(Math.random() * donePool.length)]);
 
     if (sessionStats.focusSessions % 4 === 0) {
       setTimeout(showReceipt, 1200);
@@ -363,7 +527,7 @@ function showReceipt() {
   const now     = new Date();
   const dateStr = now.toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' });
   const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-  document.getElementById('receipt-date').textContent = `${dateStr} · ${timeStr}`;
+  document.getElementById('receipt-date').textContent = `${dateStr} \u00B7 ${timeStr}`;
 
   const p          = PERSONALITIES[personality];
   const mins       = sessionStats.totalFocusMinutes;
@@ -382,7 +546,7 @@ function showReceipt() {
     { n: 'Times Got Distracted',     v: `${distracted}x`                 },
     { n: 'Sessions Skipped',         v: `${sessionStats.skips}x`         },
     { n: 'Regrets (minor)',          v: `${regrets}x`                    },
-    { n: 'Delusion: Productive',     v: '✓ YES'                          },
+    { n: 'Delusion: Productive',     v: '\u2713 YES'                     },
   ];
 
   const verdicts = {
@@ -392,7 +556,7 @@ function showReceipt() {
       "Good. Now clean your room too."
     ],
     'chill-friend': [
-      "lowkey you actually did that bestie 💅",
+      "lowkey you actually did that bestie \uD83D\uDC85",
       "slay era confirmed. go hydrate now.",
       "ngl you kinda ate this one fr."
     ],
@@ -408,7 +572,7 @@ function showReceipt() {
     ]
   };
 
-  const vPool  = verdicts[personality];
+  const vPool   = verdicts[personality];
   const verdict = vPool[Math.floor(Math.random() * vPool.length)];
 
   const ratings = ['D', 'C-', 'C', 'C+', 'B-', 'B', 'B+', 'A-', 'A', 'A+', 'S'];
@@ -423,14 +587,14 @@ function showReceipt() {
     </div>`).join('');
 
   document.getElementById('receipt-body').innerHTML = `
-    <div class="receipt-section-title">— TODAY'S PRODUCTIVITY RECEIPT —</div>
+    <div class="receipt-section-title">\u2014 TODAY'S PRODUCTIVITY RECEIPT \u2014</div>
     ${linesHTML}
     <hr class="receipt-divider">
     <div class="receipt-total-line"><span>TOTAL GRIND TIME</span><span>${mins} min</span></div>
     <div class="receipt-total-line"><span>OVERALL RATING</span><span>${rating}</span></div>
     <div class="receipt-verdict">
       "${verdict}"
-      <div class="receipt-coach">— ${p.name}</div>
+      <div class="receipt-coach">\u2014 ${p.name}</div>
     </div>
   `;
 
@@ -484,7 +648,7 @@ function playChime() {
       const gain = ctx.createGain();
       osc.connect(gain);
       gain.connect(ctx.destination);
-      osc.type           = 'sine';
+      osc.type            = 'sine';
       osc.frequency.value = freq;
       const t = ctx.currentTime + i * 0.18;
       gain.gain.setValueAtTime(0, t);
@@ -545,7 +709,7 @@ function showNotif(msg) {
 function applyTheme(dark) {
   isDark = dark;
   document.documentElement.classList.toggle('light', !dark);
-  document.getElementById('toggle-thumb').textContent = dark ? '🌙' : '☀️';
+  document.getElementById('toggle-thumb').textContent = dark ? '\uD83C\uDF19' : '\u2600\uFE0F';
   applyAccent(timerMode);
   try { localStorage.setItem('gr-theme', dark ? 'dark' : 'light'); } catch (e) {}
 }
@@ -553,7 +717,6 @@ function applyTheme(dark) {
 // ==================== PERSONALITY ====================
 function applyPersonality(id) {
   personality = id;
-  // ✅ Save selected personality to localStorage
   try { localStorage.setItem('gr-personality', id); } catch (e) {}
 
   const p = PERSONALITIES[id];
@@ -619,16 +782,14 @@ function applyPersonality(id) {
 
 // ==================== EVENT LISTENERS ====================
 
-// Onboarding — personality card selection
 document.querySelectorAll('.personality-card').forEach(card => {
   card.addEventListener('click', () => applyPersonality(card.dataset.personality));
 });
 
-// Onboarding — start button
 document.getElementById('btn-start').addEventListener('click', () => {
   const ob = document.getElementById('onboarding');
-  ob.style.opacity      = '0';
-  ob.style.transform    = 'scale(0.95)';
+  ob.style.opacity       = '0';
+  ob.style.transform     = 'scale(0.95)';
   ob.style.pointerEvents = 'none';
   setTimeout(() => ob.style.display = 'none', 500);
 
@@ -636,13 +797,12 @@ document.getElementById('btn-start').addEventListener('click', () => {
   setTickerMsg(PERSONALITIES[personality].start[0]);
 });
 
-// Personality badge — return to onboarding to change coach
 document.getElementById('personality-badge').addEventListener('click', () => {
   pause();
   const ob = document.getElementById('onboarding');
-  ob.style.display      = 'flex';
-  ob.style.opacity      = '0';
-  ob.style.transform    = 'scale(0.96)';
+  ob.style.display       = 'flex';
+  ob.style.opacity       = '0';
+  ob.style.transform     = 'scale(0.96)';
   ob.style.pointerEvents = 'all';
   setTimeout(() => {
     ob.style.opacity   = '1';
@@ -651,25 +811,21 @@ document.getElementById('personality-badge').addEventListener('click', () => {
   document.getElementById('app').classList.remove('visible');
 });
 
-// Play / Pause
 document.getElementById('btn-play').addEventListener('click', () => {
   if (soundEnabled) playClick();
   running ? pause() : start();
 });
 
-// Reset
 document.getElementById('btn-reset').addEventListener('click', () => {
   if (soundEnabled) playClick();
   reset();
 });
 
-// Skip
 document.getElementById('btn-skip').addEventListener('click', () => {
   if (soundEnabled) playClick();
   skip();
 });
 
-// Timer mode tabs
 document.querySelectorAll('.tab').forEach(tab => {
   tab.addEventListener('click', () => {
     if (tab.dataset.mode === timerMode) return;
@@ -679,7 +835,6 @@ document.querySelectorAll('.tab').forEach(tab => {
   });
 });
 
-// Settings +/- buttons
 document.querySelectorAll('.sctrl').forEach(btn => {
   btn.addEventListener('click', () => {
     const s   = btn.dataset.setting;
@@ -695,33 +850,28 @@ document.querySelectorAll('.sctrl').forEach(btn => {
   });
 });
 
-// Sound toggle
 document.getElementById('sound-toggle').addEventListener('click', () => {
   soundEnabled = !soundEnabled;
   const el = document.getElementById('sound-toggle');
-  el.textContent = soundEnabled ? '🔔' : '🔕';
+  el.textContent = soundEnabled ? '\uD83D\uDD14' : '\uD83D\uDD15';
   el.classList.toggle('active', soundEnabled);
 });
 
-// Theme toggle
 document.getElementById('theme-toggle').addEventListener('click', () => {
   if (soundEnabled) playClick();
   applyTheme(!isDark);
-  showNotif(isDark ? '✦ Dark mode' : '☀️ Light mode');
+  showNotif(isDark ? '\u2736 Dark mode' : '\u2600\uFE0F Light mode');
 });
 
-// Receipt close button
 document.getElementById('receipt-close').addEventListener('click', () => {
   document.getElementById('receipt-overlay').classList.remove('open');
 });
 
-// Receipt button
 document.getElementById('btn-receipt').addEventListener('click', () => {
   if (soundEnabled) playClick();
   showReceipt();
 });
 
-// Keyboard shortcuts
 document.addEventListener('keydown', e => {
   if (e.ctrlKey || e.metaKey) return;
 
@@ -740,13 +890,11 @@ document.addEventListener('keydown', e => {
 });
 
 // ==================== INIT ====================
-// ✅ Restore saved theme
 try {
   const saved = localStorage.getItem('gr-theme');
   if (saved === 'light') applyTheme(false);
 } catch (e) {}
 
-// ✅ Restore saved personality
 try {
   const savedPersonality = localStorage.getItem('gr-personality');
   if (savedPersonality && PERSONALITIES[savedPersonality]) {
