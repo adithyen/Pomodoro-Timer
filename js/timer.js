@@ -245,7 +245,6 @@ function setTickerMsg(msg) {
 }
 
 // ==================== SILENT NOTIFICATIONS ====================
-// Fires a personality quote every 90 seconds while the timer is running
 function startSilentNotifs() {
   clearInterval(notifInterval);
   const msgs = PERSONALITIES[personality].mid;
@@ -275,16 +274,13 @@ function start() {
     remaining--;
     updateDisplay();
 
-    // Mid-point check-in
     if (remaining === Math.floor(totalSeconds / 2) && timerMode === 'work') {
       const m = PERSONALITIES[personality].mid;
       showNotif(m[Math.floor(Math.random() * m.length)]);
     }
-    // 1-minute warning
     if (remaining === 60 && timerMode === 'work') {
       showNotif('⏱ 1 minute left...');
     }
-    // Last-10-second ticks
     if (remaining <= 10 && remaining > 0 && soundEnabled) {
       playTick();
     }
@@ -327,7 +323,6 @@ function onComplete(skipped = false) {
   if (soundEnabled) playChime();
 
   if (timerMode === 'work') {
-    // Record stats
     sessionStats.focusSessions++;
     sessionStats.totalFocusMinutes += Math.round((totalSeconds - remaining) / 60);
 
@@ -338,7 +333,6 @@ function onComplete(skipped = false) {
     const donePool = PERSONALITIES[personality].done;
     if (!skipped) showNotif('🎉 ' + donePool[Math.floor(Math.random() * donePool.length)]);
 
-    // Show receipt every 4 completed work sessions
     if (sessionStats.focusSessions % 4 === 0) {
       setTimeout(showReceipt, 1200);
     }
@@ -440,7 +434,6 @@ function showReceipt() {
     </div>
   `;
 
-  // Build barcode graphic
   const bc = document.getElementById('receipt-barcode');
   bc.innerHTML = '';
   for (let i = 0; i < 44; i++) {
@@ -500,7 +493,7 @@ function playChime() {
       osc.start(t);
       osc.stop(t + 0.65);
     });
-  } catch (e) { /* AudioContext blocked — silent fail */ }
+  } catch (e) {}
 }
 
 function playClick() {
@@ -560,6 +553,9 @@ function applyTheme(dark) {
 // ==================== PERSONALITY ====================
 function applyPersonality(id) {
   personality = id;
+  // ✅ Save selected personality to localStorage
+  try { localStorage.setItem('gr-personality', id); } catch (e) {}
+
   const p = PERSONALITIES[id];
   document.getElementById('pbadge-emoji').textContent = p.emoji;
   document.getElementById('pbadge-name').textContent  = p.name;
@@ -673,7 +669,7 @@ document.getElementById('btn-skip').addEventListener('click', () => {
   skip();
 });
 
-// Timer mode tabs (Focus / Short Break / Long Break)
+// Timer mode tabs
 document.querySelectorAll('.tab').forEach(tab => {
   tab.addEventListener('click', () => {
     if (tab.dataset.mode === timerMode) return;
@@ -719,15 +715,14 @@ document.getElementById('receipt-close').addEventListener('click', () => {
   document.getElementById('receipt-overlay').classList.remove('open');
 });
 
-// Receipt button — generate anytime
+// Receipt button
 document.getElementById('btn-receipt').addEventListener('click', () => {
   if (soundEnabled) playClick();
   showReceipt();
 });
 
-// Keyboard shortcut P
+// Keyboard shortcuts
 document.addEventListener('keydown', e => {
-  // Ignore if modifier held
   if (e.ctrlKey || e.metaKey) return;
 
   if (e.code === 'Space') {
@@ -745,12 +740,21 @@ document.addEventListener('keydown', e => {
 });
 
 // ==================== INIT ====================
+// ✅ Restore saved theme
 try {
   const saved = localStorage.getItem('gr-theme');
   if (saved === 'light') applyTheme(false);
 } catch (e) {}
 
+// ✅ Restore saved personality
+try {
+  const savedPersonality = localStorage.getItem('gr-personality');
+  if (savedPersonality && PERSONALITIES[savedPersonality]) {
+    personality = savedPersonality;
+  }
+} catch (e) {}
+
 applyAccent('work');
-applyPersonality('asian-mom');
+applyPersonality(personality);
 updateDisplay();
 updateSessionDots();
