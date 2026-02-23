@@ -756,3 +756,34 @@ header {
 @keyframes confettiFall {
   to { transform: translateY(110vh) rotate(720deg); opacity: 0; }
 }
+/* ===== BACK TO DASHBOARD BUTTON ===== */
+.btn-back {
+  position: absolute;
+  top: -40px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 8px 18px;
+  border-radius: 100px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  backdrop-filter: blur(10px);
+  color: var(--muted);
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  z-index: 5;
+}
+
+.btn-back:hover {
+  border-color: var(--accent);
+  color: var(--text);
+  box-shadow: 0 0 18px var(--glow);
+  transform: translateX(-50%) translateY(-2px);
+}
+
+.btn-back:active {
+  transform: translateX(-50%) scale(0.95);
+}

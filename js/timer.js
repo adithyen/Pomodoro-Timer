@@ -866,6 +866,28 @@ document.getElementById('theme-toggle').addEventListener('click', () => {
 document.getElementById('receipt-close').addEventListener('click', () => {
   document.getElementById('receipt-overlay').classList.remove('open');
 });
+// ==================== BACK TO DASHBOARD ====================
+document.getElementById('btn-back').addEventListener('click', () => {
+  if (soundEnabled) playClick();
+
+  // Pause timer if running
+  if (running) pause();
+
+  // Close receipt if open
+  document.getElementById('receipt-overlay').classList.remove('open');
+
+  // Hide main app
+  document.getElementById('app').classList.remove('visible');
+
+  // Show onboarding screen
+  const ob = document.getElementById('onboarding');
+  ob.style.display = 'flex';
+  ob.style.opacity = '1';
+  ob.style.transform = 'scale(1)';
+  ob.style.pointerEvents = 'all';
+
+  showNotif('Returned to dashboard.');
+});
 
 document.getElementById('btn-receipt').addEventListener('click', () => {
   if (soundEnabled) playClick();
