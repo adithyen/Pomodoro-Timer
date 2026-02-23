@@ -189,9 +189,14 @@ body::after {
   justify-content: center;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.5s;
+  transition: transform 220ms cubic-bezier(.2,.9,.2,1), opacity 200ms;
+  transform-origin: top center;
 }
-.app.visible { opacity: 1; pointer-events: all; }
+.app.visible {
+  opacity: 1;
+  pointer-events: all;
+  transform: scale(0.90); /* scale down to 90% after starting to avoid overlap */
+}
 
 /* Header */
 header {
@@ -341,6 +346,12 @@ header {
   transform: rotate(-90deg);
   filter: drop-shadow(0 0 12px var(--accent));
   transition: filter 0.6s;
+  pointer-events: none; /* prevent SVG from intercepting clicks */
+}
+
+.ring-track,
+.ring-progress {
+  pointer-events: none; /* ensure ring shapes don't capture pointer events */
 }
 
 .ring-track {
@@ -365,6 +376,7 @@ header {
   background: radial-gradient(circle, var(--glow) 0%, transparent 70%);
   transition: background 0.6s;
   animation: breathe 4s ease-in-out infinite;
+  pointer-events: none; /* glow should not block clicks */
 }
 @keyframes breathe {
   0%, 100% { transform: scale(1);    opacity: 0.6; }
@@ -522,6 +534,8 @@ header {
   align-items: center;
   gap: 16px;
   margin-top: 44px;
+  z-index: 10; /* keep controls above ring but below settings-bar */
+  position: relative;
 }
 
 .btn-icon {
@@ -557,6 +571,7 @@ header {
   transition: all 0.25s;
   box-shadow: 0 0 30px var(--glow), 0 8px 32px rgba(0,0,0,0.4);
   position: relative;
+  z-index: 11;
 }
 .btn-main::after {
   content: '';
@@ -589,7 +604,8 @@ header {
   border-radius: 100px;
   backdrop-filter: blur(20px);
   transition: background 0.5s, border-color 0.5s;
-  z-index: 30; /* ensure controls sit above the timer ring */
+  z-index: 80; /* raise above everything else so controls are clickable */
+  pointer-events: auto;
 }
 :root.light .settings-bar { background: rgba(255,255,255,0.72); border-color: rgba(0,0,0,0.1); }
 
@@ -646,7 +662,7 @@ header {
 /* ===== NOTIFICATION BANNER ===== */
 .notif {
   position: fixed;
-  top: 72px;
+  top: 42px; /* nudge down so it no longer sits over the tabs */
   left: 50%;
   transform: translateX(-50%) translateY(-12px);
   background: var(--accent);
@@ -659,10 +675,10 @@ header {
   font-weight: 500;
   opacity: 0;
   transition: all 0.35s;
-  pointer-events: none;
+  pointer-events: none; /* notif is informational only */
   white-space: nowrap;
   box-shadow: 0 4px 20px var(--glow);
-  z-index: 50;
+  z-index: 90;
   max-width: 92vw;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -834,8 +850,7 @@ header {
 @keyframes confettiFall {
   to { transform: translateY(110vh) rotate(720deg); opacity: 0; }
 }
-<<<<<<< Bug-Adjusting-in-Footer-Element-(+-,--)-for-Long-,Short,Focus-Not-working-Closes-#1
-=======
+
 /* ===== BACK TO DASHBOARD BUTTON ===== */
 .btn-back {
   position: absolute;
@@ -867,4 +882,3 @@ header {
 .btn-back:active {
   transform: translateX(-50%) scale(0.95);
 }
->>>>>>> main
