@@ -7,6 +7,8 @@ const PERSONALITIES = {
   'asian-mom': {
     emoji: '👩‍👧',
     name:  'Strict Asian Mom',
+    workAccent: { dark: '#e05c5c', light: '#c83c3c', darkGlow: 'rgba(224,92,92,0.30)', lightGlow: 'rgba(200,60,60,0.22)' },
+    pauseMsg:   '⏸ Pausing? This is why you get B+.',
     start: [
       "Timer running. No excuses.",
       "Your cousin already started 20 mins ago.",
@@ -38,6 +40,8 @@ const PERSONALITIES = {
   'chill-friend': {
     emoji: '😌',
     name:  'Chill Friend',
+    workAccent: { dark: '#5cd4a8', light: '#1eb482', darkGlow: 'rgba(92,212,168,0.25)', lightGlow: 'rgba(30,180,130,0.18)' },
+    pauseMsg:   '⏸ no worries, take a sec bestie 💆',
     start: [
       "hey… maybe focus a lil? no pressure tho.",
       "you got this bestie fr fr 💅",
@@ -69,6 +73,8 @@ const PERSONALITIES = {
   'corporate': {
     emoji: '📊',
     name:  'Corporate Manager',
+    workAccent: { dark: '#5c8ae0', light: '#2e5fbf', darkGlow: 'rgba(92,138,224,0.25)', lightGlow: 'rgba(46,95,191,0.18)' },
+    pauseMsg:   '⏸ Session on hold. Please advise.',
     start: [
       "Your productivity KPI is declining. Synergy now.",
       "Let's align on deliverables. Timer initiated.",
@@ -100,6 +106,8 @@ const PERSONALITIES = {
   'philosopher': {
     emoji: '🌀',
     name:  'Existential Philosopher',
+    workAccent: { dark: '#9b5ce0', light: '#7a34c8', darkGlow: 'rgba(155,92,224,0.25)', lightGlow: 'rgba(122,52,200,0.18)' },
+    pauseMsg:   '⏸ Even time rests. So do you.',
     start: [
       "Time is an illusion. But deadlines are not.",
       "You exist. Therefore you must focus.",
@@ -201,8 +209,9 @@ function updateSessionDots() {
 // ==================== ACCENT / MODE COLORS ====================
 function applyAccent(m) {
   const isLight = document.documentElement.classList.contains('light');
-  const acc  = isLight ? ACCENTS[m].light    : ACCENTS[m].dark;
-  const glow = isLight ? ACCENTS[m].lightGlow : ACCENTS[m].darkGlow;
+  const palette = (m === 'work') ? PERSONALITIES[personality].workAccent : ACCENTS[m];
+  const acc  = isLight ? palette.light    : palette.dark;
+  const glow = isLight ? palette.lightGlow : palette.darkGlow;
   document.documentElement.style.setProperty('--accent', acc);
   document.documentElement.style.setProperty('--glow',   glow);
   ringProgress.style.stroke = acc;
@@ -464,7 +473,7 @@ function pause() {
   _restoreTabIndicators(); // restore when paused
   document.getElementById('play-icon').style.display  = 'block';
   document.getElementById('pause-icon').style.display = 'none';
-  setTickerMsg('\u23F8 paused. still here tho.');
+  setTickerMsg(PERSONALITIES[personality].pauseMsg);
 }
 
 function reset() {
@@ -718,6 +727,7 @@ function applyTheme(dark) {
 function applyPersonality(id) {
   personality = id;
   try { localStorage.setItem('gr-personality', id); } catch (e) {}
+  document.body.dataset.vibe = id;
 
   const p = PERSONALITIES[id];
   document.getElementById('pbadge-emoji').textContent = p.emoji;
@@ -725,6 +735,7 @@ function applyPersonality(id) {
   document.querySelectorAll('.personality-card').forEach(c => {
     c.classList.toggle('selected', c.dataset.personality === id);
   });
+  applyAccent(timerMode); // recolour ring immediately for new coach
   if (running) startTicker();
   else         setTickerMsg(p.start[0]);
 }
