@@ -718,6 +718,7 @@ function applyTheme(dark) {
 function applyPersonality(id) {
   personality = id;
   try { localStorage.setItem('gr-personality', id); } catch (e) {}
+  document.body.dataset.vibe = id;
 
   const p = PERSONALITIES[id];
   document.getElementById('pbadge-emoji').textContent = p.emoji;
